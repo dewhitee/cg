@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(800, 600);
 	glutInitWindowPosition(100, 150);
-	glutCreateWindow("OpenGL lesson 3");
+	glutCreateWindow("Lab 2");
 	glutDisplayFunc(/*display*/displayEco);
 	glutReshapeFunc(reshape);
 	glutMainLoop();

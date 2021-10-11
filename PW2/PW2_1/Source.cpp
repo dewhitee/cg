@@ -17,7 +17,6 @@ struct Point
 };
 
 void reshape(int w, int h);
-void display();
 void displayEco();
 void readFromFile(const char* fileName);
 void lineto(Point p);
@@ -34,7 +33,7 @@ int main(int argc, char* argv[])
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(800, 600);
 	glutInitWindowPosition(100, 150);
-	glutCreateWindow("Lab 3");
+	glutCreateWindow("Lab 2");
 	glutDisplayFunc(/*display*/displayEco);
 	glutReshapeFunc(reshape);
 	glutMainLoop();
@@ -47,18 +46,54 @@ void reshape(int w, int h)
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluOrtho2D(0, 100, 0, 100);
+	//gluOrtho2D(0, w, 0, h);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
 
 void displayEco()
 {
+	GLint maxClipPlaneCount;
+	glGetIntegerv(GL_MAX_CLIP_PLANES, &maxClipPlaneCount);
+	printf("Count of available clip planes: %d", maxClipPlaneCount); // 8
+
+	// Greater y => lower clip plane
+	// Greater x => more to the right (obviously)
+	// 
+	// +x -y => upper left corner clipped
+	// -x +y => lower right corner clipped
+	// -x -y => all objects clipped
+	// +x +y => nothing clipped
+	//
+	// D = shift: 
+	// Lesser D => closer to the diagonal, 
+	// Greater D => farther from the diagonal
+	GLdouble planeEquation[4] = {-1, 1, 0, 0};
+	glClipPlane(GL_CLIP_PLANE0, planeEquation);
+	glEnable(GL_CLIP_PLANE0); // Enabling clip plane
+
+	glLineWidth(2);
 	glClearColor(1, 1, 1, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glColor3f(0, 0, 0);
 	drawShapeFromFile("points_D.txt");
 	drawShapeFromFile("points_B.txt");
+
+	glColor4d(0, 0, 1, 0.5);
+	glBegin(GL_LINES);
+	glVertex2i(0, 0);
+	glVertex2i(100, 100);
+	glEnd();
+
+	glColor4d(0, 1, 0, 0.5);
+	glBegin(GL_LINES);
+	glVertex2i(0, 100);
+	glVertex2i(100, 0);
+	glEnd();
+
 	glFlush();
+
+	glDisable(GL_CLIP_PLANE0); // Disabling clip plane
 }
 
 void readFromFile(const char* fileName)

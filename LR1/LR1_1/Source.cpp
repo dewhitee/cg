@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(800, 600);
-	glutCreateWindow("OpenGL lesson 1");
+	glutCreateWindow("Lab 1");
 	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
 	glutMainLoop();
@@ -30,7 +30,7 @@ void reshape(int w, int h)
 	//gluOrtho2D(0, w, 0, h);
 
 	// Changing projection of world to fit low vertex values from display function
-	gluOrtho2D(-100, 100, -100, 100);
+	gluOrtho2D(-100, 100, -50, 50);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
