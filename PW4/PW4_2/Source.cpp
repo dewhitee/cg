@@ -72,12 +72,21 @@ void processNormalKeys(unsigned char key, int x, int y);
 void processSpecialKeys(int key, int x, int y);
 void drawBezier(const GLfloat* points, GLint pointCount = 5, float step = 1000.f);
 
+void drawD();
+void drawB();
+void drawObject(void(*drawShapeFunc)(), Point pivot, float angle);
+
+void rotateRelative(Point point, float angle);
+void scaleRelative(Point point, float by);
+
 vector<Point> point;
 vector<int> code;
 Point currentPoint;
 
-Point pivotD = {30, 36};
-Point pivotB = {60, 35};
+Point pivotD = {27, 32};
+Point pivotB = {57, 32};
+
+float currentAngle = 0.f;
 
 int main(int argc, char* argv[])
 {
@@ -112,62 +121,47 @@ void display()
 	glClearColor(1, 1, 1, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glColor3f(0, 0, 0);
-	drawShapeFromFile("points_D_lines.txt");
-	drawShapeFromFile("points_B_lines.txt");
-
-	// --- Draw curvature of initials using Bezier curve
-	//auto drawBezier = [](const GLfloat* points, GLint pointCount = 5, float step = 1000.f)
-	//{
-	//	glMap1f(GL_MAP1_VERTEX_3,
-	//		0.0,		// Min t-value
-	//		1.0,		// Max t-value
-	//		3,			// Dimension of point (count of elements in a row)
-	//		pointCount,	// Total points count
-	//		points		// Control points array
-	//	);
-	//	glEnable(GL_MAP1_VERTEX_3);
-	//	glColor3d(1, 0, 0);
-	//	glBegin(GL_LINE_STRIP);
-	//	for (float t = 0; t <= 1; t += 1 / step)
-	//	{
-	//		glEvalCoord1f(t);
-	//	}
-	//	glEnd();
-	//};
-
-	drawBezier(*bezierPointsD1, 8);
-	drawBezier(*bezierPointsD2, 8);
-	drawBezier(*bezierPointsB1, 4);
-	drawBezier(*bezierPointsB2);
-	drawBezier(*bezierPointsB3, 4);
-	drawBezier(*bezierPointsB4, 4);
-	glFlush();
+	drawObject(drawD, pivotD, currentAngle);
+	drawObject(drawB, pivotB, -currentAngle);
+	glutSwapBuffers();
 }
 
-void displayD()
+void drawD()
 {
-	glLineWidth(3);
-	glClearColor(1, 1, 1, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glColor3f(0, 0, 0);
 	drawShapeFromFile("points_D_lines.txt");
 	drawBezier(*bezierPointsD1, 8);
 	drawBezier(*bezierPointsD2, 8);
-	glFlush();
 }
 
-void displayB()
+void drawB()
 {
-	glLineWidth(3);
-	glClearColor(1, 1, 1, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glColor3f(0, 0, 0);
 	drawShapeFromFile("points_B_lines.txt");
 	drawBezier(*bezierPointsB1, 4);
 	drawBezier(*bezierPointsB2);
 	drawBezier(*bezierPointsB3, 4);
 	drawBezier(*bezierPointsB4, 4);
-	glFlush();
+}
+
+void drawObject(void(*drawShapeFunc)(), Point pivot, float angle)
+{
+	glPushMatrix();
+		rotateRelative(pivot, angle);
+		drawShapeFunc();
+	glPopMatrix();
+}
+
+void rotateRelative(Point point, float angle)
+{
+	glTranslatef(point.x, point.y, 0.f);
+	glRotatef(angle, 0.f, 0.f, 1.f);
+	glTranslatef(-point.x, -point.y, 0.f);
+}
+
+void scaleRelative(Point point, float by)
+{
+	glTranslated(point.x, point.y, 0.0);
+	glScaled(by, by, 0.0);
+	glTranslated(-point.x, -point.y, 0.0);
 }
 
 void readFromFile(const char* fileName)
@@ -238,14 +232,14 @@ void processNormalKeys(unsigned char key, int x, int y)
 		case 43: // +
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glScaled(1.1, 1.1, 0);
+			scaleRelative(pivotD, 1.1f);
 			display();
 			break;
 		}
 		case 45: // -
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glScaled(0.9, 0.9, 0);
+			scaleRelative(pivotD, 0.9f);
 			display();
 			break;
 		}
@@ -254,64 +248,72 @@ void processNormalKeys(unsigned char key, int x, int y)
 
 void processSpecialKeys(int key, int x, int y)
 {
-	// TODO: World -> Relative
+	constexpr float translationValue = 20.f;
+	constexpr float rotationValue = 15.f;
+
 	switch (key)
 	{
 		case GLUT_KEY_UP:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(0, 20, 0);
+			glTranslated(0, translationValue, 0);
 			display();
 			break;
 		}
 		case GLUT_KEY_DOWN:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(0, -20, 0);
+			glTranslated(0, -translationValue, 0);
 			display();
 			break;
 		}
 		case GLUT_KEY_LEFT:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(-20, 0, 0);
+			glTranslated(-translationValue, 0, 0);
 			display();
 			break;
 		}
 		case GLUT_KEY_RIGHT:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(20, 0, 0);
+			glTranslated(translationValue, 0, 0);
 			display();
 			break;
 		}
 		case GLUT_KEY_HOME:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glRotated(15.0, 0.0, 0.0, 1.0);
-			//glRotated(15.0, pivotD.x, pivotD.y, 1.0);
+			rotateRelative(pivotD, rotationValue);
 			display();
 			break;
 		}
 		case GLUT_KEY_END:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glRotated(-15.0, 0.0, 0.0, 1.0);
-			//glRotated(-15.0, pivotD.x, pivotD.y, 1.0);
+			rotateRelative(pivotD, -rotationValue);
 			display();
 			break;
 		}
 		case GLUT_KEY_PAGE_UP:
 		{
-			glMatrixMode(GL_MODELVIEW);
-			// Rotate D clockwise
-			glRotated(15.0, 0.0, 0.0, 1.0);
-			displayD();
-
-			// Rotate B counter-clockwise
 			//glMatrixMode(GL_MODELVIEW);
-			glRotated(-15.0, 0.0, 0.0, 1.0);
-			displayB();
+
+			// Rotate D counter-clockwise around some point
+			// Rotate B clockwise around some point
+			currentAngle += rotationValue;
+			display();
+			break;
+		}
+		case GLUT_KEY_PAGE_DOWN:
+		{
+			//glMatrixMode(GL_MODELVIEW);
+
+			// Rotate D clockwise around some point
+			// Rotate B counter-clockwise around some point
+			currentAngle -= rotationValue;
+			display();
+			break;
 		}
 	}
 }

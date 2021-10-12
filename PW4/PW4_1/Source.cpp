@@ -6,6 +6,8 @@ void drawAxis();
 void processNormalKeys(unsigned char key, int x, int y);
 void processSpecialKeys(int key, int x, int y);
 
+constexpr float translationValue = 10.f;
+
 int main(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
@@ -79,7 +81,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 	if (key == 65)
 	{
 		glMatrixMode(GL_MODELVIEW);
-		glTranslated(20, 20, 0);
+		glTranslated(translationValue, translationValue, 0);
 		display();
 	}
 }
@@ -90,22 +92,22 @@ void processSpecialKeys(int key, int x, int y)
 	{
 		case GLUT_KEY_UP:
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(0, 20, 0);
+			glTranslated(0, translationValue, 0);
 			display();
 			break;
 		case GLUT_KEY_DOWN:
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(0, -20, 0);
+			glTranslated(0, -translationValue, 0);
 			display();
 			break;
 		case GLUT_KEY_LEFT:
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(-20, 0, 0);
+			glTranslated(-translationValue, 0, 0);
 			display();
 			break;
 		case GLUT_KEY_RIGHT:
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(20, 0, 0);
+			glTranslated(translationValue, 0, 0);
 			display();
 			break;
 
