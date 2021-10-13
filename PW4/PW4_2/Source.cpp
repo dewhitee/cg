@@ -111,6 +111,7 @@ void reshape(int w, int h)
 	glLoadIdentity();
 	//gluOrtho2D(0, 100, 0, 100);
 	gluOrtho2D(0, w, 0, h);
+	//glOrtho(0, w, 0, h, -w, w);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
@@ -297,8 +298,6 @@ void processSpecialKeys(int key, int x, int y)
 		}
 		case GLUT_KEY_PAGE_UP:
 		{
-			//glMatrixMode(GL_MODELVIEW);
-
 			// Rotate D counter-clockwise around some point
 			// Rotate B clockwise around some point
 			currentAngle += rotationValue;
@@ -307,8 +306,6 @@ void processSpecialKeys(int key, int x, int y)
 		}
 		case GLUT_KEY_PAGE_DOWN:
 		{
-			//glMatrixMode(GL_MODELVIEW);
-
 			// Rotate D clockwise around some point
 			// Rotate B counter-clockwise around some point
 			currentAngle -= rotationValue;
