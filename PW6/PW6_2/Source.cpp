@@ -22,14 +22,13 @@ vector<vector<int>> facesD;
 vector<vector<int>> facesB;
 vector<Vector3> colorD;
 vector<Vector3> colorB;
-//int point_count, face_count;
 
 constexpr bool colorize = true;
 constexpr float translationValue = 1.f;
-constexpr float rotationValue = 1.f;
+constexpr float rotationValue = 5.f;
 constexpr Vector3 pivotD = {27, 32, 0.f};
-constexpr Vector3 pivotB = {0.f, 0.f, 0.f};
-constexpr Vector3 depthVec = {0.f, 0.f, 10.f};
+//constexpr Vector3 pivotB = {0.f, 0.f, 0.f};
+//constexpr Vector3 depthVec = {0.f, 0.f, 10.f};
 
 //GLfloat bezierPointsD1[8][3] = {
 //	{35, 54, 0},
@@ -51,31 +50,31 @@ constexpr Vector3 depthVec = {0.f, 0.f, 10.f};
 //	{39, 33, 0},
 //	{37, 32, 0}
 //};
-GLfloat bezierPointsB1[5][3] = {
-	{66, 54, 0},
-	{68, 52, 0},
-	{68, 48, 0},
-	{66, 46, 0},
-};
-GLfloat bezierPointsB2[5][3] = {
-	{66, 44, 0},
-	{68, 42, 0},
-	{68, 39, 0},
-	{68, 37, 0},
-	{67, 35, 0}
-};
-GLfloat bezierPointsB3[5][3] = {
-	{68, 58, 0},
-	{71, 55, 0},
-	{71, 47, 0},
-	{69, 45, 0},
-};
-GLfloat bezierPointsB4[5][3] = {
-	{69, 45, 0},
-	{71, 43, 0},
-	{71, 34, 0},
-	{69, 32, 0},
-};
+//GLfloat bezierPointsB1[5][3] = {
+//	{66, 54, 0},
+//	{68, 52, 0},
+//	{68, 48, 0},
+//	{66, 46, 0},
+//};
+//GLfloat bezierPointsB2[5][3] = {
+//	{66, 44, 0},
+//	{68, 42, 0},
+//	{68, 39, 0},
+//	{68, 37, 0},
+//	{67, 35, 0}
+//};
+//GLfloat bezierPointsB3[5][3] = {
+//	{68, 58, 0},
+//	{71, 55, 0},
+//	{71, 47, 0},
+//	{69, 45, 0},
+//};
+//GLfloat bezierPointsB4[5][3] = {
+//	{69, 45, 0},
+//	{71, 43, 0},
+//	{71, 34, 0},
+//	{69, 32, 0},
+//};
 
 void reshape(int w, int h);
 void display();
@@ -89,6 +88,7 @@ void rotateRelative(Vector3 pivot, float angle, Vector3 rotation);
 void scaleRelative(Vector3 pivot, float by);
 
 void copyShiftedPoints(GLfloat points[][3], GLfloat copyFrom[][3], size_t size, Vector3 shiftBy);
+void drawGrid();
 
 //void drawShapeFromFile(const char* fileName);
 void drawD();
@@ -107,8 +107,10 @@ int main(int argc, char* argv[])
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
-	// Depth test initialization
-	glEnable(GL_DEPTH_TEST);
+	// Depth test initialization  NOT WORKING HERE!!!!!!!!!!!
+	//glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_NEVER);
+	//glDepthRange(0.0f, 1.0f);
 
 	glutInitWindowSize(800, 600);
 	glutCreateWindow("OpenGL lesson 7");
@@ -129,23 +131,28 @@ void reshape(int w, int h)
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
+
+	// Depth test initialization !!!!!!!!!!!!!!!!!!!!!!
+	glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_LESS);
+
 	//glOrtho(0, 10, 0, 10, -10, 10);
 	//glOrtho(0, w, 0, h, w, h);
 	///glOrtho(-100, 100, -100, 100, -100, 100);
 	gluPerspective(
-		60,		// FOV (y)
+		90,		// FOV (y)
 		1,		// aspect
-		-1,		// zNear => lesser value - earlier cut when too near
-		10);	// zFar
+		50,		// zNear => greater value - earlier cut when too near
+		1000);	// zFar
 
 	// Set view point (camera)
 	gluLookAt(
 		100,	// eyeX			- scaling adds distance from the zero coords
 		100,	// eyeY 
 		100,	// eyeZ
-		pivotD.x,		// centerX
-		pivotD.y,		// centerY 
-		pivotD.z,		// centerZ 
+		0,//pivotD.x,		// centerX
+		0,//pivotD.y,		// centerY 
+		0,//pivotD.z,		// centerZ 
 		0,		// upX
 		1,		// upY			- with -1 Y will point at the bottom, X to the left and Z to the right
 		0);		// upZ
@@ -161,16 +168,18 @@ void display()
 	glColor3f(0.9, 0.9, 0.9);
 
 	// Depth test
+	glFrontFace(GL_CW);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
 
+	drawGrid();
 	drawAxis();
 	glColor3f(0.9, 0.7, 0.9);
 	drawObject(drawD, pivotD, 0.f);
-	drawObject(drawB, pivotB, 0.f);
+	drawObject(drawB, pivotD, 0.f);
 
 	glutSwapBuffers();
+
 	glDisable(GL_CULL_FACE);
 }
 
@@ -323,7 +332,7 @@ void processSpecialKeys(int key, int x, int y)
 		case GLUT_KEY_UP:
 		{
 			glMatrixMode(GL_MODELVIEW);
-			glTranslated(0, 2, 0);
+			glTranslated(0, translationValue, 0);
 			display();
 			break;
 		}
@@ -331,7 +340,8 @@ void processSpecialKeys(int key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			//glRotated(rotationValue, 1, 1, 1);
-			rotateRelative(pivotD, rotationValue, {1, 1, 1});
+			//rotateRelative(pivotD, rotationValue, {1, 1, 1});
+			glTranslated(0, -translationValue, 0);
 			display();
 			break;
 		}
@@ -402,6 +412,49 @@ void copyShiftedPoints(GLfloat points[][3], GLfloat copyFrom[][3], size_t size, 
 	}
 }
 
+void drawGrid()
+{
+	constexpr float cellSize = 100;
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glBegin(GL_LINES);
+	for (int i = 1; i <= 100; i++)
+	{
+		if (i == 0)
+		{
+			glColor3f(.6, .3, .3);
+		}
+		else if (i % 10 == 0)
+		{
+			glColor3f(.15, .15, .15);
+		}
+		else
+		{
+			glColor3f(.05, .05, .05);
+		};
+		glVertex3f(i, 0, 0);
+		glVertex3f(i, 0, cellSize);
+		if (i == 0)
+		{
+			glColor3f(.6, .3, .3);
+		}
+		else if (i % 10 == 0)
+		{
+			glColor3f(.15, .15, .15);
+		}
+		else
+		{
+			glColor3f(.05, .05, .05);
+		};
+		glVertex3f(0, 0, i);
+		glVertex3f(cellSize, 0, i);
+	};
+	glEnd();
+	glPopMatrix();
+}
+
 void drawD()
 {
 	//drawShapeFromFile("points_D_lines.txt");
@@ -431,7 +484,6 @@ void drawB()
 void drawObject(void(*drawShapeFunc)(), Vector3 pivot, float angle)
 {
 	glPushMatrix();
-	//rotateRelative(pivot, angle);
 	drawShapeFunc();
 	glPopMatrix();
 }
