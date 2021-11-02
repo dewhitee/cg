@@ -62,6 +62,7 @@ void drawAxis();
 void drawFaces(const vector<Vector3>& coords, const vector<vector<int>>& faces, const vector<Vector3>& colors, const ObjectStats stats);
 void drawTestPlanes();
 void drawTestSphere();
+void drawAnimatedSphere();
 
 // Normals
 Vector3 calculateNormal(Vector3 pointA, Vector3 pointB, Vector3 pointC);
@@ -435,6 +436,9 @@ void initLight()
 	glEnable(GL_LIGHTING);
 	glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 	//glLightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+	
+	GLfloat ambient[] = {0.1, 0.1, 0.1, 1.0};
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient);
 	glEnable(GL_NORMALIZE);
 }
 
@@ -722,13 +726,21 @@ void drawTestSphere()
 	glLoadIdentity();
 	glutSolidSphere(
 		20,		// radius
-		128,	// slices - divisions around z-axis
-		128);	// stacks - divisions along z-axis
+		64,		// slices - divisions around z-axis
+		64);	// stacks - divisions along z-axis
 	
 	if (!useCCW)
 	{
 		glFrontFace(GL_CW);
 	}
+	glPopMatrix();
+}
+
+void drawAnimatedSphere()
+{
+	glPushMatrix();
+	glLoadIdentity();
+
 	glPopMatrix();
 }
 
