@@ -1,7 +1,7 @@
 ﻿#include <GL/glut.h>
 #include <math.h>
 #define PI 3.141592653
-int light_sample = 6;
+int light_sample = 1;
 void init(void)
 {
 	glClearColor(0.3, 0.3, 0.3, 0.0);
@@ -88,15 +88,15 @@ void display(void)
 		// направление на центр плоскости
 		// включен рассчет убывания интенсивности для прожектора
 		{
-			GLfloat light4_diffuse[] = {0.4, 0.7, 0.2};
-			GLfloat light4_position[] = {0.0, 0.0, 1.0, 1.0};
-			GLfloat light4_spot_direction[] = {0.0, 0.0, -1.0};
+			GLfloat light4_diffuse[] = {0.2, 0.2, 0.9};
+			GLfloat light4_position[] = {0.0, 0.0, 1.0, 1.0};	// z == 0				=> black screen
+			GLfloat light4_spot_direction[] = {0.0, 0.0, -1.0};	// z == +1 || z == 0	=> black screen
 			glEnable(GL_LIGHT4);
 			glLightfv(GL_LIGHT4, GL_DIFFUSE, light4_diffuse);
 			glLightfv(GL_LIGHT4, GL_POSITION, light4_position);
 			glLightf(GL_LIGHT4, GL_SPOT_CUTOFF, 30);
 			glLightfv(GL_LIGHT4, GL_SPOT_DIRECTION, light4_spot_direction);
-			glLightf(GL_LIGHT4, GL_SPOT_EXPONENT, 15.0);
+			glLightf(GL_LIGHT4, GL_SPOT_EXPONENT, 45.0);
 			break;
 		}
 		case 6: // несколько источников света
@@ -110,8 +110,7 @@ void display(void)
 			glLightf(GL_LIGHT5, GL_LINEAR_ATTENUATION, 0.4);
 			glLightf(GL_LIGHT5, GL_QUADRATIC_ATTENUATION, 0.8);
 			GLfloat light6_diffuse[] = {0.0, 1.0, 0.0};
-			GLfloat light6_position[] = {0.5 * cos(2 * PI / 3), 0.5 * sin(2 * PI / 3),
-			1.0, 1.0};
+			GLfloat light6_position[] = {0.5 * cos(2 * PI / 3), 0.5 * sin(2 * PI / 3), 1.0, 1.0};
 			glEnable(GL_LIGHT6);
 			glLightfv(GL_LIGHT6, GL_DIFFUSE, light6_diffuse);
 			glLightfv(GL_LIGHT6, GL_POSITION, light6_position);
@@ -119,8 +118,7 @@ void display(void)
 			glLightf(GL_LIGHT6, GL_LINEAR_ATTENUATION, 0.4);
 			glLightf(GL_LIGHT6, GL_QUADRATIC_ATTENUATION, 0.8);
 			GLfloat light7_diffuse[] = {0.0, 0.0, 1.0};
-			GLfloat light7_position[] = {0.5 * cos(4 * PI / 3), 0.5 * sin(4 * PI / 3),
-			1.0, 1.0};
+			GLfloat light7_position[] = {0.5 * cos(4 * PI / 3), 0.5 * sin(4 * PI / 3), 1.0, 1.0};
 			glEnable(GL_LIGHT7);
 			glLightfv(GL_LIGHT7, GL_DIFFUSE, light7_diffuse);
 			glLightfv(GL_LIGHT7, GL_POSITION, light7_position);

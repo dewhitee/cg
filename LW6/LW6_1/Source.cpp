@@ -23,97 +23,63 @@ vector<vector<int>> facesB;
 vector<Vector3> colorD;
 vector<Vector3> colorB;
 
+int lightType = 1;
+bool lightingEnabled = true;
+bool testPlanesEnabled = false;
+bool testSphereEnabled = false;
 constexpr bool colorize = true;
+constexpr bool useCCW = true;
+
 constexpr float translationValue = 1.f;
 constexpr float rotationValue = 5.f;
 constexpr Vector3 pivotD = {27, 32, 0.f};
-//constexpr Vector3 pivotB = {0.f, 0.f, 0.f};
-//constexpr Vector3 depthVec = {0.f, 0.f, 10.f};
-
-//GLfloat bezierPointsD1[8][3] = {
-//	{35, 54, 0},
-//	{37, 53, 0},
-//	{38, 52, 0},
-//	{39, 50, 0},
-//	{39.7, 43, 0},
-//	{39, 40, 0},
-//	{37, 37, 0},
-//	{35, 36, 0}
-//};
-//GLfloat bezierPointsD2[8][3] = {
-//	{37, 58, 0},
-//	{39, 57, 0},
-//	{41, 55, 0},
-//	{42, 53, 0},
-//	{43, 42, 0},
-//	{42, 37, 0},
-//	{39, 33, 0},
-//	{37, 32, 0}
-//};
-//GLfloat bezierPointsB1[5][3] = {
-//	{66, 54, 0},
-//	{68, 52, 0},
-//	{68, 48, 0},
-//	{66, 46, 0},
-//};
-//GLfloat bezierPointsB2[5][3] = {
-//	{66, 44, 0},
-//	{68, 42, 0},
-//	{68, 39, 0},
-//	{68, 37, 0},
-//	{67, 35, 0}
-//};
-//GLfloat bezierPointsB3[5][3] = {
-//	{68, 58, 0},
-//	{71, 55, 0},
-//	{71, 47, 0},
-//	{69, 45, 0},
-//};
-//GLfloat bezierPointsB4[5][3] = {
-//	{69, 45, 0},
-//	{71, 43, 0},
-//	{71, 34, 0},
-//	{69, 32, 0},
-//};
 
 void reshape(int w, int h);
 void display();
-ObjectStats readFromFile(const char* fileName, const char* coloredFileName, vector<Vector3>& outCoords,
-	vector<vector<int>>& outFaces, vector<Vector3>& outColors, bool withColor);
+ObjectStats readFromFile(const char* fileName, const char* coloredFileName, const char* coloredFileNameCCW, 
+	vector<Vector3>& outCoords, vector<vector<int>>& outFaces, vector<Vector3>& outColors, bool withColor);
 
+// Keys
 void processNormalKeys(unsigned char key, int x, int y);
 void processSpecialKeys(int key, int x, int y);
 
+// Transformations
 void rotateRelative(Vector3 pivot, float angle, Vector3 rotation);
 void scaleRelative(Vector3 pivot, float by);
 
-void copyShiftedPoints(GLfloat points[][3], GLfloat copyFrom[][3], size_t size, Vector3 shiftBy);
-void drawGrid();
+// Light
+void initLight();
+void setLight();
+void disableLight();
+void setADC(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular);
 
-//void drawShapeFromFile(const char* fileName);
+// Drawing
+void drawGrid();
 void drawD();
 void drawB();
-void drawObject(void(*drawShapeFunc)(), Vector3 pivot, float angle);
+void drawObject(void(*drawShapeFunc)());
 void drawAxis();
 void drawFaces(const vector<Vector3>& coords, const vector<vector<int>>& faces, const vector<Vector3>& colors, const ObjectStats stats);
-void drawBezier(const GLfloat* points, GLint pointCount = 5, float step = 1000.f);
+void drawTestPlanes();
+void drawTestSphere();
+
+// Normals
+Vector3 calculateNormal(Vector3 pointA, Vector3 pointB, Vector3 pointC);
 
 int main(int argc, char* argv[])
 {
-	//statsD = readFromFile("coordsD.txt", coordsD, facesD);
-	statsD = readFromFile("coordsD3.txt", "coordsD3colored.txt", coordsD, facesD, colorD, colorize);
-	statsB = readFromFile("coordsB3.txt", "coordsB3colored.txt", coordsB, facesB, colorB, colorize);
+	//statsD = readFromFile("coordsD3.txt", "coordsD3colored.txt", coordsD, facesD, colorD, colorize);
+	statsD = readFromFile("coordsD3.txt", "coordsD3colored.txt", "coordsD3colored_ccw.txt", coordsD, facesD, colorD, colorize);
+	//statsB = readFromFile("coordsB3.txt", "coordsB3colored.txt", coordsB, facesB, colorB, colorize);
+	statsB = readFromFile("coordsB3.txt", "coordsB3colored.txt", "coordsB3colored_ccw.txt", coordsB, facesB, colorB, colorize);
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
-	// Depth test initialization  NOT WORKING HERE!!!!!!!!!!!
-	//glEnable(GL_DEPTH_TEST);
-	//glDepthFunc(GL_NEVER);
-	//glDepthRange(0.0f, 1.0f);
-
 	glutInitWindowSize(800, 600);
-	glutCreateWindow("OpenGL lesson 7");
+	glutCreateWindow("Lab 6");
+
+	initLight();
 
 	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
@@ -134,6 +100,7 @@ void reshape(int w, int h)
 
 	// Depth test initialization !!!!!!!!!!!!!!!!!!!!!!
 	glEnable(GL_DEPTH_TEST);
+	///glEnable(GL_DITHER);
 	//glDepthFunc(GL_LESS);
 
 	//glOrtho(0, 10, 0, 10, -10, 10);
@@ -167,24 +134,33 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(0.9, 0.9, 0.9);
 
+	setLight();
+
 	// Depth test
-	glFrontFace(GL_CW);
+	if (!useCCW)
+	{
+		glFrontFace(GL_CW);
+	}
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
+	drawTestPlanes();
+	drawTestSphere();
 	drawGrid();
 	drawAxis();
-	glColor3f(0.9, 0.7, 0.9);
-	drawObject(drawD, pivotD, 0.f);
-	drawObject(drawB, pivotD, 0.f);
 
-	glutSwapBuffers();
+	glColor3f(0.9, 0.7, 0.9);
+	drawObject(drawD);
+	drawObject(drawB);
+
+	disableLight();
 
 	glDisable(GL_CULL_FACE);
+	glutSwapBuffers();
 }
 
-ObjectStats readFromFile(const char* fileName, const char* coloredFileName, vector<Vector3>& outCoords,
-	vector<vector<int>>& outFaces, vector<Vector3>& outColors, bool withColor)
+ObjectStats readFromFile(const char* fileName, const char* coloredFileName, const char* coloredFileNameCCW,
+	vector<Vector3>& outCoords, vector<vector<int>>& outFaces, vector<Vector3>& outColors, bool withColor)
 {
 	outCoords.clear();
 	outFaces.clear();
@@ -192,7 +168,7 @@ ObjectStats readFromFile(const char* fileName, const char* coloredFileName, vect
 	ObjectStats outStats = {};
 	float x, y, z;
 	Vector3 p;
-	ifstream f(withColor ? coloredFileName : fileName, ios::in);
+	ifstream f(withColor ? (useCCW ? coloredFileNameCCW : coloredFileName) : fileName, ios::in);
 	f >> outStats.pointCount >> outStats.faceCount;
 	for (int i = 0; i < outStats.pointCount; i++)
 	{
@@ -239,6 +215,30 @@ void processNormalKeys(unsigned char key, int x, int y)
 {
 	switch (key)
 	{
+		case '0': { lightType = 0; break; }
+		case '1': { lightType = 1; break; }
+		case '2': { lightType = 2; break; }
+		case '3': { lightType = 3; break; }
+		case '4': { lightType = 4; break; }
+		case '5': { lightType = 5; break; }
+		case 'r':
+		case 'R':
+		{
+			glLoadIdentity();
+			break;
+		}
+		case 't':
+		case 'T':
+		{
+			testPlanesEnabled = !testPlanesEnabled;
+			break;
+		}
+		case 'g':
+		case 'G':
+		{
+			testSphereEnabled = !testSphereEnabled;
+			break;
+		}
 		case 27: // ESC
 		{
 			exit(0);
@@ -248,21 +248,18 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			scaleRelative(pivotD, 1.1f);
-			display();
 			break;
 		}
 		case 45: // -
 		{
 			glMatrixMode(GL_MODELVIEW);
 			scaleRelative(pivotD, 0.9f);
-			display();
 			break;
 		}
 		case 127: // Delete. Rotating around Z-axis counter-clockwise
 		{
 			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, rotationValue, {0.f, 0.f, 1.f});
-			display();
 			break;
 		}
 		// ADDITIONALS
@@ -271,7 +268,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glTranslated(0, 0, translationValue);
-			display();
 			break;
 		}
 		case 'A':
@@ -279,7 +275,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glTranslated(-translationValue, 0, 0);
-			display();
 			break;
 		}
 		case 's':
@@ -287,7 +282,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glTranslated(0, 0, -translationValue);
-			display();
 			break;
 		}
 		case 'd':
@@ -295,7 +289,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glTranslated(translationValue, 0, 0);
-			display();
 			break;
 		}
 		case 'x':
@@ -303,7 +296,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, -rotationValue, {1.f, 0.f, 0.f});
-			display();
 			break;
 		}
 		case 'y':
@@ -311,7 +303,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, -rotationValue, {0.f, 1.f, 0.f});
-			display();
 			break;
 		}
 		case 'z':
@@ -319,73 +310,59 @@ void processNormalKeys(unsigned char key, int x, int y)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, -rotationValue, {0.f, 0.f, 1.f});
-			display();
 			break;
 		}
 	}
+	glutPostRedisplay();
 }
 
 void processSpecialKeys(int key, int x, int y)
 {
+	glMatrixMode(GL_MODELVIEW);
 	switch (key)
 	{
 		case GLUT_KEY_UP:
 		{
-			glMatrixMode(GL_MODELVIEW);
 			glTranslated(0, translationValue, 0);
-			display();
 			break;
 		}
 		case GLUT_KEY_DOWN:
 		{
-			glMatrixMode(GL_MODELVIEW);
-			//glRotated(rotationValue, 1, 1, 1);
-			//rotateRelative(pivotD, rotationValue, {1, 1, 1});
 			glTranslated(0, -translationValue, 0);
-			display();
 			break;
 		}
 		case GLUT_KEY_RIGHT:
 		{
-			glMatrixMode(GL_MODELVIEW);
 			glTranslated(translationValue, 0.f, 0.f);
-			display();
 			break;
 		}
 		case GLUT_KEY_LEFT:
 		{
-			glMatrixMode(GL_MODELVIEW);
 			glTranslated(-translationValue, 0.f, 0.f);
-			display();
 			break;
 		}
 		case GLUT_KEY_HOME:
 		{
-			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, rotationValue, {1.f, 0.f, 0.f});
-			display();
 			break;
 		}
 		case GLUT_KEY_END:
 		{
-			glMatrixMode(GL_MODELVIEW);
 			rotateRelative(pivotD, rotationValue, {0.f, 1.f, 0.f});
-			display();
 			break;
 		}
 		case GLUT_KEY_PAGE_UP: // Rotating around all-axis clockwise
 		{
 			rotateRelative(pivotD, -rotationValue, {1.f, 1.f, 1.f});
-			display();
 			break;
 		}
 		case GLUT_KEY_PAGE_DOWN: // Rotating around all-axis counter-clockwise
 		{
 			rotateRelative(pivotD, rotationValue, {1.f, 1.f, 1.f});
-			display();
 			break;
 		}
 	}
+	glutPostRedisplay();
 }
 
 void rotateRelative(Vector3 pivot, float angle, Vector3 rotation)
@@ -402,18 +379,10 @@ void scaleRelative(Vector3 pivot, float by)
 	glTranslated(-pivot.x, -pivot.y, -pivot.z);
 }
 
-void copyShiftedPoints(GLfloat points[][3], GLfloat copyFrom[][3], size_t size, Vector3 shiftBy)
-{
-	for (int i = 0; i < size; i++)
-	{
-		points[i][0] = copyFrom[i][0] + shiftBy.x;
-		points[i][1] = copyFrom[i][1] + shiftBy.y;
-		points[i][2] = copyFrom[i][2] + shiftBy.z;
-	}
-}
-
 void drawGrid()
 {
+	glDisable(GL_LIGHTING);
+
 	constexpr float cellSize = 100;
 
 	glMatrixMode(GL_MODELVIEW);
@@ -453,35 +422,147 @@ void drawGrid()
 	};
 	glEnd();
 	glPopMatrix();
+
+	if (lightingEnabled)
+	{
+		glEnable(GL_LIGHTING);
+	}
+}
+
+void initLight()
+{
+	glClearColor(0.1, 0.1, 0.1, 0);
+	glEnable(GL_LIGHTING);
+	glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+	//glLightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+	glEnable(GL_NORMALIZE);
+}
+
+void setLight()
+{
+	glPushMatrix();
+	glLoadIdentity();
+	GLfloat materialDiffuse[] = {1.0, 1.0, 1.0, 1.0};
+	//glShadeModel(GL_FLAT);
+	glShadeModel(GL_SMOOTH);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+
+	GLfloat lightDiffuse[] = {0.8, 0.8, 0.8, 1.0};
+	GLfloat lightAmbient[] = {0.2, 0.2, 0.2, 1.0};
+	GLfloat lightSpecular[] = {1.0, 1.0, 1.0, 1.0};
+	GLfloat lightShininess[] = {25.f};
+
+	glMaterialfv(GL_FRONT, GL_SHININESS, lightShininess);
+	switch (lightType)
+	{
+		case 0: // No light
+		{
+			disableLight();
+			glDisable(GL_LIGHTING);
+			lightingEnabled = false;
+			break;
+		}
+		case 1: // Directional light
+		{
+			
+			glEnable(GL_LIGHTING);
+			lightingEnabled = true;
+			//GLfloat lightDiffuse[] = {0.4, 0.7, 0.2};
+			GLfloat lightPosition[] = {0.0, 0.0, /*-1.0*/1.0, 0.0}; // direction
+			glEnable(GL_LIGHT0);
+			setADC(GL_LIGHT0, lightAmbient, lightDiffuse, lightSpecular);
+			glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+			break;
+		}
+		case 2: // Point light
+		{
+			constexpr float attenuationCoefficient = 0.02f;
+			glEnable(GL_LIGHTING);
+			lightingEnabled = true;
+			GLfloat pointLightDiffuse[] = {1.0, 0.843, 0.0}; // gold color
+			GLfloat lightPosition[] = {10.0, 25.0, 10.0, 1.0};
+			glEnable(GL_LIGHT1);
+			setADC(GL_LIGHT1, lightAmbient, pointLightDiffuse, lightSpecular);
+			glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);
+			glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0.0);
+			glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, attenuationCoefficient * 0.2);
+			glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, attenuationCoefficient * 0.4);
+			break;
+		}
+		case 3: // Projector
+		{
+			glEnable(GL_LIGHTING);
+			lightingEnabled = true;
+			GLfloat lightPosition[] = {0.0, 0.0, /*1.0*/0.0, 1.0};
+			GLfloat lightSpotDirection[] = {-1.0, 1.0, 0.0};
+			glEnable(GL_LIGHT2);
+			setADC(GL_LIGHT2, lightAmbient, lightDiffuse, lightSpecular);
+			glLightfv(GL_LIGHT2, GL_POSITION, lightPosition);
+			glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, 90); // angle between axis and conuss side
+			glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, lightSpotDirection);
+			glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, 2.0);
+			break;
+		}
+		case 4: // Projector 2
+		{
+			glEnable(GL_LIGHTING);
+			lightingEnabled = true;
+			GLfloat lightPosition[] = {100.0, 100.0, 100.0, 1.0};
+			GLfloat lightSpotDirection[] = {-1.0, -1.0, -1.0};
+			glEnable(GL_LIGHT3);
+			setADC(GL_LIGHT3, lightAmbient, lightDiffuse, lightSpecular);
+			glLightfv(GL_LIGHT3, GL_POSITION, lightPosition);
+			glLightf(GL_LIGHT3, GL_SPOT_CUTOFF, 5); // angle between axis and conuss side
+			glLightfv(GL_LIGHT3, GL_SPOT_DIRECTION, lightSpotDirection);
+			glLightf(GL_LIGHT3, GL_SPOT_EXPONENT, 5.0);
+			break;
+		}
+		case 5: // Projector 3
+		{
+			glEnable(GL_LIGHTING);
+			lightingEnabled = true;
+			GLfloat projectorLightDiffuse[] = {1.0, 0.843, 0.0}; // gold color
+			GLfloat lightPosition[] = {100.0, 100.0, 100.0, 1.0};
+			GLfloat lightSpotDirection[] = {-1.0, -1.0, -1.0};
+			glEnable(GL_LIGHT3);
+			setADC(GL_LIGHT3, lightAmbient, projectorLightDiffuse, lightSpecular);
+			glLightfv(GL_LIGHT3, GL_POSITION, lightPosition);
+			glLightf(GL_LIGHT3, GL_SPOT_CUTOFF, 45); // angle between axis and conuss side
+			glLightfv(GL_LIGHT3, GL_SPOT_DIRECTION, lightSpotDirection);
+			glLightf(GL_LIGHT3, GL_SPOT_EXPONENT, 25.0);
+			break;
+		}
+	}
+	glPopMatrix();
+}
+
+void disableLight()
+{
+	glDisable(GL_LIGHT0);
+	glDisable(GL_LIGHT1);
+	glDisable(GL_LIGHT2);
+	glDisable(GL_LIGHT3);
+	glDisable(GL_LIGHT4);
+}
+
+void setADC(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular)
+{
+	glLightfv(light, GL_AMBIENT, ambient);
+	glLightfv(light, GL_DIFFUSE, diffuse);
+	glLightfv(light, GL_SPECULAR, specular);
 }
 
 void drawD()
 {
-	//drawShapeFromFile("points_D_lines.txt");
 	drawFaces(coordsD, facesD, colorD, statsD);
-
-	///drawBezier(*bezierPointsD1, 8);
-	///GLfloat d1[8][3];
-	///copyShiftedPoints(d1, bezierPointsD1, 8, depthVec);
-	///drawBezier(*d1, 8);
-
-	///drawBezier(*bezierPointsD2, 8);
-	///GLfloat d2[8][3];
-	///copyShiftedPoints(d2, bezierPointsD2, 8, depthVec);
-	///drawBezier(*d2, 8);
 }
 
 void drawB()
 {
-	//drawShapeFromFile("points_B_lines.txt");
 	drawFaces(coordsB, facesB, colorB, statsB);
-	///drawBezier(*bezierPointsB1, 4);
-	///drawBezier(*bezierPointsB2);
-	///drawBezier(*bezierPointsB3, 4);
-	///drawBezier(*bezierPointsB4, 4);
 }
 
-void drawObject(void(*drawShapeFunc)(), Vector3 pivot, float angle)
+void drawObject(void(*drawShapeFunc)())
 {
 	glPushMatrix();
 	drawShapeFunc();
@@ -490,6 +571,8 @@ void drawObject(void(*drawShapeFunc)(), Vector3 pivot, float angle)
 
 void drawAxis()
 {
+	glDisable(GL_LIGHTING);
+
 	constexpr int axisLength = 1000;
 
 	glMatrixMode(GL_MODELVIEW);
@@ -503,11 +586,25 @@ void drawAxis()
 	glVertex2i(axisLength, 0);
 	glEnd();
 
+	// X-negative
+	glColor4d(0.3, 0, 0, 0.5);
+	glBegin(GL_LINES);
+	glVertex2i(-axisLength, 0);
+	glVertex2i(0, 0);
+	glEnd();
+
 	// Y
 	glColor4d(0, 1, 0, 0.5);
 	glBegin(GL_LINES);
 	glVertex2i(0, 0);
 	glVertex2i(0, axisLength);
+	glEnd();
+
+	// Y-negative
+	glColor4d(0, 0.3, 0, 0.5);
+	glBegin(GL_LINES);
+	glVertex2i(0, -axisLength);
+	glVertex2i(0, 0);
 	glEnd();
 
 	// Z
@@ -517,25 +614,50 @@ void drawAxis()
 	glVertex3i(0, 0, axisLength);
 	glEnd();
 
+	// Z-negative
+	glColor4d(0, 0, 0.3, 0.5);
+	glBegin(GL_LINES);
+	glVertex3i(0, 0, -axisLength);
+	glVertex3i(0, 0, 0);
+	glEnd();
+
 	glPopMatrix();
+
+	if (lightingEnabled)
+	{
+		glEnable(GL_LIGHTING);
+	}
 }
 
 void drawFaces(const vector<Vector3>& coords, const vector<vector<int>>& faces, const vector<Vector3>& colors,
 	const ObjectStats stats)
 {
-	const bool colorizedPolygon = colors.size() > 0;
+	const bool colorizePolygon = colors.size() > 0;
 	for (int i = 0; i < stats.faceCount; i++)
 	{
-		if (colorizedPolygon)
+		if (colorizePolygon)
 		{
 			glBegin(GL_POLYGON);
 			glColor3f(colors[i].x, colors[i].y, colors[i].z);
+			GLfloat polygonDiffuse[] = {colors[i].x, colors[i].y, colors[i].z};
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, polygonDiffuse);
 		}
 		else
 		{
 			glBegin(GL_LINE_LOOP);
 		}
 
+		//glNormal3f(0.0, 0.0, -1.0);
+
+		vector<Vector3> triangleCoords;
+		for (int j = 0; j < faces[i].size(); j++)
+		{
+			triangleCoords.push_back(coords[faces[i][j]]);
+		}
+
+		Vector3 normal = calculateNormal(triangleCoords[0], triangleCoords[1], triangleCoords[2]);
+		GLfloat normalVec[] = {normal.x, normal.y, normal.z};
+		glNormal3fv(normalVec);
 		for (int j = 0; j < faces[i].size(); j++)
 		{
 			const float coordX = coords[faces[i][j]].x;
@@ -543,25 +665,79 @@ void drawFaces(const vector<Vector3>& coords, const vector<vector<int>>& faces, 
 			const float coordZ = coords[faces[i][j]].z;
 			glVertex3f(coordX, coordY, coordZ);
 		}
+
 		glEnd();
 	}
 }
 
-void drawBezier(const GLfloat* points, GLint pointCount, float step)
+void drawTestPlanes()
 {
-	glMap1f(GL_MAP1_VERTEX_3,
-		0.0,		// Min t-value
-		1.0,		// Max t-value
-		3,			// Dimension of point (count of elements in a row)
-		pointCount,	// Total points count
-		points		// Control points array
-	);
-	glEnable(GL_MAP1_VERTEX_3);
-	glColor3d(1, 0, 0);
-	glBegin(GL_LINE_STRIP);
-	for (float t = 0; t <= 1; t += 1 / step)
+	constexpr float wallLength = 100.f;
+
+	if (!testPlanesEnabled)
 	{
-		glEvalCoord1f(t);
+		return;
 	}
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	GLfloat wallDiffuse[] = {1.0, 1.0, 1.0, 1.0};
+
+	// X-aligned
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, wallDiffuse);
+	glColor3f(0.0, 0.0, 0.0);
+	glBegin(GL_POLYGON);
+		glNormal3f(0.0, 0.0, 1.0);
+		glVertex3f(0.0, 0.0, 0.0);
+		glVertex3f(wallLength, 0.0, 0.0);
+		glVertex3f(wallLength, wallLength, 0.0);
+		glVertex3f(0.0, wallLength, 0.0);
 	glEnd();
+
+	// Z-aligned
+	glBegin(GL_POLYGON);
+	glNormal3f(0.0, 0.0, 1.0);
+		glVertex3f(1.0, 0.0, 0.0);
+		glVertex3f(0.0, wallLength, 0.0);
+		glVertex3f(0.0, wallLength, wallLength);
+		glVertex3f(0.0, 0.0, wallLength);
+	glEnd();
+
+	glPopMatrix();
+}
+
+void drawTestSphere()
+{
+	if (!testSphereEnabled)
+	{
+		return;
+	}
+
+	if (!useCCW)
+	{
+		glFrontFace(GL_CCW);
+	}
+	glPushMatrix();
+	glLoadIdentity();
+	glutSolidSphere(
+		20,		// radius
+		128,	// slices - divisions around z-axis
+		128);	// stacks - divisions along z-axis
+	
+	if (!useCCW)
+	{
+		glFrontFace(GL_CW);
+	}
+	glPopMatrix();
+}
+
+Vector3 calculateNormal(Vector3 pointA, Vector3 pointB, Vector3 pointC)
+{
+	return
+	{
+		(pointB.y - pointA.y) * (pointC.z - pointA.z) - (pointB.z - pointA.z) * (pointC.y - pointA.y),
+		(pointB.z - pointA.z) * (pointC.x - pointA.x) - (pointB.x - pointA.x) * (pointB.z - pointA.z),
+		(pointB.x - pointA.x) * (pointC.y - pointA.y) - (pointB.y - pointA.y) * (pointC.x - pointA.x)
+	};
 }
