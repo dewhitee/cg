@@ -51,7 +51,7 @@ void scaleRelative(Vector3 pivot, float by);
 void initLight();
 void setLight();
 void disableLight();
-void setADC(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular);
+void setADS(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular);
 
 // Drawing
 void drawGrid();
@@ -144,6 +144,11 @@ void display()
 	}
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
+
+	GLfloat materialDiffuse[] = {1.0, 1.0, 1.0, 1.0};
+	GLfloat materialShininess[] = {25.f};
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
+	glMaterialfv(GL_FRONT, GL_SHININESS, materialShininess);
 
 	drawTestPlanes();
 	drawTestSphere();
@@ -446,17 +451,14 @@ void setLight()
 {
 	glPushMatrix();
 	glLoadIdentity();
-	GLfloat materialDiffuse[] = {1.0, 1.0, 1.0, 1.0};
+
 	//glShadeModel(GL_FLAT);
 	glShadeModel(GL_SMOOTH);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE, materialDiffuse);
 
 	GLfloat lightDiffuse[] = {0.8, 0.8, 0.8, 1.0};
 	GLfloat lightAmbient[] = {0.2, 0.2, 0.2, 1.0};
 	GLfloat lightSpecular[] = {1.0, 1.0, 1.0, 1.0};
-	GLfloat lightShininess[] = {25.f};
 
-	glMaterialfv(GL_FRONT, GL_SHININESS, lightShininess);
 	switch (lightType)
 	{
 		case 0: // No light
@@ -467,14 +469,17 @@ void setLight()
 			break;
 		}
 		case 1: // Directional light
-		{
-			
+		{			
 			glEnable(GL_LIGHTING);
 			lightingEnabled = true;
-			//GLfloat lightDiffuse[] = {0.4, 0.7, 0.2};
+			// (alpha) w == 0.f => directional,	w == 1.f => positional
+			// With w == 0:
+			// Diffuse and specular lighting are calculated taking light's direction (not position), attenuation disabled
+			// With w == 1:
+			// Diffuse and specular lighting are calculated taking light's actual location (in the eye coords), attenuation enabled
 			GLfloat lightPosition[] = {0.0, 0.0, /*-1.0*/1.0, 0.0}; // direction
 			glEnable(GL_LIGHT0);
-			setADC(GL_LIGHT0, lightAmbient, lightDiffuse, lightSpecular);
+			setADS(GL_LIGHT0, lightAmbient, lightDiffuse, lightSpecular);
 			glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 			break;
 		}
@@ -486,8 +491,9 @@ void setLight()
 			GLfloat pointLightDiffuse[] = {1.0, 0.843, 0.0}; // gold color
 			GLfloat lightPosition[] = {10.0, 25.0, 10.0, 1.0};
 			glEnable(GL_LIGHT1);
-			setADC(GL_LIGHT1, lightAmbient, pointLightDiffuse, lightSpecular);
+			setADS(GL_LIGHT1, lightAmbient, pointLightDiffuse, lightSpecular);
 			glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);
+			// intensity decrease rates
 			glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0.0);
 			glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, attenuationCoefficient * 0.2);
 			glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, attenuationCoefficient * 0.4);
@@ -500,7 +506,7 @@ void setLight()
 			GLfloat lightPosition[] = {0.0, 0.0, /*1.0*/0.0, 1.0};
 			GLfloat lightSpotDirection[] = {-1.0, 1.0, 0.0};
 			glEnable(GL_LIGHT2);
-			setADC(GL_LIGHT2, lightAmbient, lightDiffuse, lightSpecular);
+			setADS(GL_LIGHT2, lightAmbient, lightDiffuse, lightSpecular);
 			glLightfv(GL_LIGHT2, GL_POSITION, lightPosition);
 			glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, 90); // angle between axis and conuss side
 			glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, lightSpotDirection);
@@ -514,7 +520,7 @@ void setLight()
 			GLfloat lightPosition[] = {100.0, 100.0, 100.0, 1.0};
 			GLfloat lightSpotDirection[] = {-1.0, -1.0, -1.0};
 			glEnable(GL_LIGHT3);
-			setADC(GL_LIGHT3, lightAmbient, lightDiffuse, lightSpecular);
+			setADS(GL_LIGHT3, lightAmbient, lightDiffuse, lightSpecular);
 			glLightfv(GL_LIGHT3, GL_POSITION, lightPosition);
 			glLightf(GL_LIGHT3, GL_SPOT_CUTOFF, 5); // angle between axis and conuss side
 			glLightfv(GL_LIGHT3, GL_SPOT_DIRECTION, lightSpotDirection);
@@ -529,7 +535,7 @@ void setLight()
 			GLfloat lightPosition[] = {100.0, 100.0, 100.0, 1.0};
 			GLfloat lightSpotDirection[] = {-1.0, -1.0, -1.0};
 			glEnable(GL_LIGHT3);
-			setADC(GL_LIGHT3, lightAmbient, projectorLightDiffuse, lightSpecular);
+			setADS(GL_LIGHT3, lightAmbient, projectorLightDiffuse, lightSpecular);
 			glLightfv(GL_LIGHT3, GL_POSITION, lightPosition);
 			glLightf(GL_LIGHT3, GL_SPOT_CUTOFF, 45); // angle between axis and conuss side
 			glLightfv(GL_LIGHT3, GL_SPOT_DIRECTION, lightSpotDirection);
@@ -549,7 +555,7 @@ void disableLight()
 	glDisable(GL_LIGHT4);
 }
 
-void setADC(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular)
+void setADS(GLenum light, GLfloat* ambient, GLfloat* diffuse, GLfloat* specular)
 {
 	glLightfv(light, GL_AMBIENT, ambient);
 	glLightfv(light, GL_DIFFUSE, diffuse);
@@ -701,7 +707,7 @@ void drawTestPlanes()
 
 	// Z-aligned
 	glBegin(GL_POLYGON);
-	glNormal3f(0.0, 0.0, 1.0);
+		//glNormal3f(0.0, 0.0, 1.0);
 		glVertex3f(1.0, 0.0, 0.0);
 		glVertex3f(0.0, wallLength, 0.0);
 		glVertex3f(0.0, wallLength, wallLength);
